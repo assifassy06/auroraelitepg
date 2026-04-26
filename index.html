@@ -5,11 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Aurora Elite V3 - Firebase Hosting</title>
 
-    <script defer src="/__/firebase/12.12.1/firebase-app-compat.js"></script>
-    <script defer src="/__/firebase/12.12.1/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.12.1/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.12.1/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB22niGIY0zZku5IMdqhqEjU5q4UtqWvZM",
+    authDomain: "auroraelitepg.firebaseapp.com",
+    databaseURL: "https://auroraelitepg-default-rtdb.firebaseio.com"
+    projectId: "auroraelitepg",
+    storageBucket: "auroraelitepg.firebasestorage.app",
+    messagingSenderId: "87036293026",
+    appId: "1:87036293026:web:3b126001711313c1e5ccfb",
+    measurementId: "G-5JVSPN5LWC"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 
     <style media="screen">
       body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
@@ -33,18 +46,15 @@
       let hostel = [];
       let hostelRef;
 
-      // Core logic functions
       function updateDashboard() {
         console.log("Dashboard updated with", hostel.length, "rooms.");
-        // Your existing dashboard UI logic goes here
+        
       }
 
       function renderMain() {
         console.log("Main view rendered.");
-        // Your existing room rendering logic goes here
       }
 
-      // New save function that pushes to cloud
       function save() {
         localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel)); // Local backup
         if (hostelRef) {
@@ -64,7 +74,7 @@
             hostel = [
               { id: 101, status: 'available', resident: null },
               { id: 102, status: 'available', resident: null }
-              // Add your original default room creation loop here
+            
             ];
             save(); 
           }
@@ -84,24 +94,6 @@
         });
       }
 
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-
-        try {
-          let app = firebase.app();
-          // Initialize Database Reference
-          hostelRef = firebase.database().ref('aurora_elite_v3');
-          
-          loadEl.textContent = `Firebase SDK loaded successfully.`;
-          
-          // Call the Cloud Load function
-          loadFromFirebase();
-
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading Firebase. Ensure you ran "firebase init".';
-        }
-      });
     </script>
   </body>
 </html>
