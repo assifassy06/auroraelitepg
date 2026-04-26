@@ -5,24 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Aurora Elite V3 - Firebase Hosting</title>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyB22niGIY0zZku5IMdqhqEjU5q4UtqWvZM",
-    authDomain: "auroraelitepg.firebaseapp.com",
-    databaseURL: "https://auroraelitepg-default-rtdb.firebaseio.com"
-    projectId: "auroraelitepg",
-    storageBucket: "auroraelitepg.firebasestorage.app",
-    messagingSenderId: "87036293026",
-    appId: "1:87036293026:web:3b126001711313c1e5ccfb",
-    measurementId: "G-5JVSPN5LWC"
-  };
+    <script>
+      // 1. Fixed the missing comma after databaseURL
+      const firebaseConfig = {
+        apiKey: "AIzaSyB22niGIY0zZku5IMdqhqEjU5q4UtqWvZM",
+        authDomain: "auroraelitepg.firebaseapp.com",
+        databaseURL: "https://auroraelitepg-default-rtdb.firebaseio.com", 
+        projectId: "auroraelitepg",
+        storageBucket: "auroraelitepg.firebasestorage.app",
+        messagingSenderId: "87036293026",
+        appId: "1:87036293026:web:3b126001711313c1e5ccfb",
+        measurementId: "G-5JVSPN5LWC"
+      };
 
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
+      // 2. Used the correct compat initialization
+      firebase.initializeApp(firebaseConfig);
+    </script>
 
     <style media="screen">
       body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
@@ -34,15 +35,20 @@
   </head>
   <body>
     
+    <div id="message">
+      <h2>Aurora Elite V3</h2>
+      <h1>Hostel Management</h1>
+      <p id="status">Connecting to cloud storage...</p>
+    </div>
+    
     <p id="load">Firebase SDK Loading&hellip;</p>
 
     <script>
       let hostel = [];
-      let hostelRef;
+      let hostelRef = firebase.database().ref('aurora_elite_v3'); // Initialize ref
 
       function updateDashboard() {
         console.log("Dashboard updated with", hostel.length, "rooms.");
-        
       }
 
       function renderMain() {
@@ -50,9 +56,9 @@
       }
 
       function save() {
-        localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel)); // Local backup
+        localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel));
         if (hostelRef) {
-          hostelRef.set(hostel); // Push to Firebase
+          hostelRef.set(hostel);
         }
         updateDashboard();
         renderMain();
@@ -64,20 +70,23 @@
           if (data) {
             hostel = data;
           } else {
-            // Create default rooms if empty
             hostel = [
               { id: 101, status: 'available', resident: null },
               { id: 102, status: 'available', resident: null }
-            
             ];
             save(); 
           }
           updateDashboard();
           renderMain();
-          document.getElementById('status').textContent = "Sync Active (Cloud)";
+          
+          // Fixed: Ensure #status exists before setting text
+          const statusEl = document.getElementById('status');
+          if(statusEl) statusEl.textContent = "Sync Active (Cloud)";
+          
+          const loadEl = document.getElementById('load');
+          if(loadEl) loadEl.textContent = "Firebase Loaded Successfully";
         });
 
-        // Real-time listening: changes from other devices appear instantly
         hostelRef.on('value', (snapshot) => {
           const data = snapshot.val();
           if (data) {
@@ -88,6 +97,8 @@
         });
       }
 
+      // 4. Start the load process
+      loadFromFirebase();
     </script>
   </body>
 </html>
