@@ -198,12 +198,13 @@
         let activeFilter = 'all';
         let viewMode = 'tabbed';
 	
-	function loadFromFirebase() {
-  hostelRef.on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      hostel = data;
-    } else {
+	// --- FIREBASE SYNC ---
+        function loadFromFirebase() {
+            hostelRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    hostel = data;
+                } else {
 
         hostel = [];
 	if (hostel.length === 0) {
@@ -217,7 +218,10 @@
             }
             save();
         }
-
+                updateDashboard();
+                renderMain();
+            });
+        }
         function save() {
             localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel));
   hostelRef.set(hostel);
@@ -595,8 +599,7 @@
         };
 
         // Init
-        save();
-load from firebase();
+loadfromfirebase();
     </script>
 </body>
 </html>
