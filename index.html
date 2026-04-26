@@ -1,104 +1,602 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Aurora Elite V3 - Firebase Hosting</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Elite | Premium Women's PG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <script>
-      // 1. Fixed the missing comma after databaseURL
-      const firebaseConfig = {
-        apiKey: "AIzaSyB22niGIY0zZku5IMdqhqEjU5q4UtqWvZM",
-        authDomain: "auroraelitepg.firebaseapp.com",
-        databaseURL: "https://auroraelitepg-default-rtdb.firebaseio.com", 
-        projectId: "auroraelitepg",
-        storageBucket: "auroraelitepg.firebasestorage.app",
-        messagingSenderId: "87036293026",
-        appId: "1:87036293026:web:3b126001711313c1e5ccfb",
-        measurementId: "G-5JVSPN5LWC"
-      };
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB22niGIY0zZku5IMdqhqEjU5q4UtqWvZM",
+    authDomain: "auroraelitepg.firebaseapp.com",
+    projectId: "auroraelitepg",
+    storageBucket: "auroraelitepg.firebasestorage.app",
+    messagingSenderId: "87036293026",
+    appId: "1:87036293026:web:3b126001711313c1e5ccfb",
+    measurementId: "G-5JVSPN5LWC"
+  };
 
-      // 2. Used the correct compat initialization
-      firebase.initializeApp(firebaseConfig);
-    </script>
 
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const hostelRef = db.ref('aurora_elite_data');
+</script>
+
+    <style>
+        .bed-occupied { background-color: #10b981; } 
+        .bed-vacant { background-color: #ef4444; } 
+        .status-paid { color: #1e3a8a; font-weight: bold; } 
+        .status-due { color: #f97316; font-weight: bold; } 
+        body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
     </style>
-  </head>
-  <body>
-    
-    <div id="message">
-      <h2>Aurora Elite V3</h2>
-      <h1>Hostel Management</h1>
-      <p id="status">Connecting to cloud storage...</p>
+</head>
+<body class="text-slate-800">
+
+    <nav class="bg-rose-900 text-white p-5 sticky top-0 z-50 shadow-2xl">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">AURORA ELITE</h1>
+                <p class="text-[10px] uppercase tracking-widest text-rose-200">Premium Women's PG Management</p>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-rose-300"></i>
+                    <input type="text" id="searchInput" onkeyup="handleSearch()" placeholder="Search resident or room..." 
+                           class="w-full pl-10 pr-4 py-2 rounded-full bg-rose-800 border-none text-white placeholder-rose-300 focus:ring-2 focus:ring-rose-400 outline-none text-sm">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="downloadPDF()" title="Download PDF" class="bg-white text-rose-900 h-10 w-10 flex items-center justify-center rounded-full font-bold hover:bg-rose-100 transition shadow-lg">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </button>
+                    <button onclick="downloadExcel()" title="Download Excel" class="bg-white text-emerald-700 h-10 w-10 flex items-center justify-center rounded-full font-bold hover:bg-emerald-50 transition shadow-lg">
+                        <i class="fa-solid fa-file-export"></i>
+                    </button>
+                    <input type="file" id="fileImport" accept=".xlsx, .xls" class="hidden" onchange="handleImport(event)">
+                    <button onclick="triggerImport()" title="Import Excel" class="bg-white text-indigo-700 h-10 w-10 flex items-center justify-center rounded-full font-bold hover:bg-indigo-50 transition shadow-lg">
+                        <i class="fa-solid fa-file-import"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <p class="text-[10px] uppercase font-bold text-slate-400 mb-2">Live Vacancy Breakdown</p>
+                <div id="vacancyBreakdown" class="space-y-1 text-xs font-semibold"></div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <p class="text-[10px] uppercase font-bold text-slate-400">Monthly Revenue</p>
+                <h3 class="text-2xl font-black text-emerald-600" id="statReceived">₹0</h3>
+                <p class="text-[10px] text-slate-400 mt-1">Total Collected This Month</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
+                <p class="text-[10px] uppercase font-bold text-slate-400">Beds with Fees Due</p>
+                <h3 class="text-2xl font-black text-rose-700" id="statTotalDues">0</h3>
+                <p class="text-[10px] text-orange-500 font-bold" id="statPending">₹0 Pending</p>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <p class="text-[10px] uppercase font-bold text-slate-400 mb-2">Vacating Soon</p>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between font-bold text-rose-600">
+                        <span>This Month:</span> <span id="statVacThis">0</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-indigo-600">
+                        <span>Next Month:</span> <span id="statVacNext">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+            <div class="flex bg-white p-1 rounded-xl shadow-sm border border-slate-200">
+                <button onclick="changeView('tabbed')" id="btnTabbed" class="px-4 py-2 rounded-lg text-xs font-bold transition">Floor View</button>
+                <button onclick="changeView('list')" id="btnList" class="px-4 py-2 rounded-lg text-xs font-bold transition">Full List View</button>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="applyFilter('all')" class="text-[10px] uppercase font-bold px-6 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 transition">Show All</button>
+                <button onclick="applyFilter('due')" class="text-[10px] uppercase font-bold px-6 py-2 rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 transition">Show Only Dues</button>
+            </div>
+        </div>
+
+        <div id="floorTabControls" class="flex gap-2 overflow-x-auto pb-4 mb-2"></div>
+        <div id="mainDisplay" class="space-y-12 pb-20"></div>
     </div>
-    
-    <p id="load">Firebase SDK Loading&hellip;</p>
+
+    <div id="bedModal" class="fixed inset-0 bg-slate-900/80 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-800" id="modalTitle">Bed Details</h2>
+                <div class="flex gap-2">
+                    <button id="waButton" title="WhatsApp Reminder" class="bg-green-500 text-white p-2 rounded-full h-10 w-10 flex items-center justify-center hover:scale-110 transition"><i class="fa-brands fa-whatsapp text-lg"></i></button>
+                    <button onclick="closeModal()" class="text-slate-400 h-10 w-10 hover:rotate-90 transition"><i class="fa-solid fa-xmark text-2xl"></i></button>
+                </div>
+            </div>
+
+            <form id="bedForm" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <input type="hidden" id="activeRoomId">
+                <input type="hidden" id="activeBedIdx">
+
+                <div class="md:col-span-2 bg-rose-50 p-4 rounded-2xl border border-rose-100">
+                    <p id="prorateDisplay" class="text-xs font-semibold text-rose-700 italic">Fee logic will appear here...</p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Resident Name</label>
+                    <input type="text" id="resName" required class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 focus:border-rose-400 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Mobile (+91)</label>
+                    <input type="tel" id="resMobile" required class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 focus:border-rose-400 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Joining Date</label>
+                    <input type="date" id="joinDate" required onchange="updateProrate()" class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 focus:border-rose-400 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Monthly Fee (₹)</label>
+                    <input type="number" id="monthlyFee" required onchange="updateProrate()" class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1 focus:border-rose-400 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Intended Vacate Date</label>
+                    <input type="date" id="vacateDate" class="w-full border-2 border-slate-100 p-3 rounded-xl mt-1">
+                </div>
+
+                <div class="md:col-span-2 flex flex-wrap gap-3 pt-6 border-t mt-4">
+                    <button type="submit" class="flex-[2] bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-black transition">Save Record</button>
+                    <button type="button" id="btnPaid" onclick="togglePayment(true)" class="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-emerald-700 transition hidden">Mark Paid</button>
+                    <button type="button" id="btnUnpaid" onclick="togglePayment(false)" class="flex-1 bg-orange-500 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-orange-600 transition hidden">Mark Unpaid</button>
+                    <button type="button" id="btnVacate" onclick="processVacate()" class="flex-1 bg-rose-100 text-rose-600 font-bold py-4 rounded-2xl hover:bg-rose-200 transition">Vacate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="roomModal" class="fixed inset-0 bg-slate-900/80 hidden z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center">
+            <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-bed text-2xl"></i>
+            </div>
+            <h2 class="text-xl font-bold">Edit Bed Count</h2>
+            <p class="text-sm text-slate-400 mb-6">Room: <span id="configRoomNo" class="font-bold text-slate-700"></span></p>
+            <select id="newSharing" class="w-full border-2 border-slate-100 p-4 rounded-2xl mb-8 outline-none focus:border-rose-400">
+                <option value="1">1 (Private)</option>
+                <option value="2">2 Share</option>
+                <option value="3">3 Share</option>
+                <option value="4">4 Share</option>
+                <option value="5">5 Share</option>
+                <option value="6">6 Share</option>
+                <option value="7">7 Share</option>
+                <option value="8">8 Share</option>
+            </select>
+            <div class="flex gap-2">
+                <button onclick="closeRoomModal()" class="flex-1 bg-slate-100 py-3 rounded-xl font-bold">Cancel</button>
+                <button onclick="saveRoomConfig()" class="flex-1 bg-rose-900 text-white py-3 rounded-xl font-bold">Update</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-      let hostel = [];
-      let hostelRef = firebase.database().ref('aurora_elite_v3'); // Initialize ref
+        // --- DATA SETUP ---
+        let hostel = [];
+        let currentFloor = 1;
+        let activeFilter = 'all';
+        let viewMode = 'tabbed';
+	
+	function loadFromFirebase() {
+  hostelRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      hostel = data;
+    } else {
 
-      function updateDashboard() {
-        console.log("Dashboard updated with", hostel.length, "rooms.");
-      }
-
-      function renderMain() {
-        console.log("Main view rendered.");
-      }
-
-      function save() {
-        localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel));
-        if (hostelRef) {
-          hostelRef.set(hostel);
+        hostel = [];
+	if (hostel.length === 0) {
+            for (let f = 1; f <= 6; f++) {
+                for (let r = 1; r <= 8; r++) {
+                    hostel.push({ id: (f * 100) + r, floor: f, sharing: 3, beds: Array(3).fill(null), paidBeds: [] });
+                }
+            }
+            for (let r = 1; r <= 5; r++) {
+                hostel.push({ id: 700 + r, floor: 7, sharing: 4, beds: Array(4).fill(null), paidBeds: [] });
+            }
+            save();
         }
-        updateDashboard();
-        renderMain();
-      }
 
-      function loadFromFirebase() {
-        hostelRef.once('value', (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            hostel = data;
-          } else {
-            hostel = [
-              { id: 101, status: 'available', resident: null },
-              { id: 102, status: 'available', resident: null }
-            ];
-            save(); 
-          }
-          updateDashboard();
-          renderMain();
-          
-          // Fixed: Ensure #status exists before setting text
-          const statusEl = document.getElementById('status');
-          if(statusEl) statusEl.textContent = "Sync Active (Cloud)";
-          
-          const loadEl = document.getElementById('load');
-          if(loadEl) loadEl.textContent = "Firebase Loaded Successfully";
-        });
-
-        hostelRef.on('value', (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            hostel = data;
+        function save() {
+            localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel));
+  hostelRef.set(hostel);
             updateDashboard();
             renderMain();
-          }
-        });
-      }
+        }
 
-      // 4. Start the load process
-      loadFromFirebase();
+        // --- ANALYTICS ---
+        function updateDashboard() {
+            let stats = { collected: 0, pending: 0, totalDues: 0, vacThis: 0, vacNext: 0 };
+            let vacancies = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0 };
+            
+            const now = new Date();
+            const thisM = now.getMonth();
+            const nextM = (thisM + 1) % 12;
+
+            hostel.forEach(room => {
+                room.beds.forEach((bed, idx) => {
+                    if (bed) {
+                        const paid = room.paidBeds.includes(idx);
+                        if (paid) stats.collected += parseInt(bed.fee);
+                        else { stats.pending += parseInt(bed.fee); stats.totalDues++; }
+
+                        if (bed.vacateDate) {
+                            const vD = new Date(bed.vacateDate);
+                            if (vD.getMonth() === thisM) stats.vacThis++;
+                            else if (vD.getMonth() === nextM) stats.vacNext++;
+                        }
+                    } else {
+                        if(vacancies[room.sharing] !== undefined) vacancies[room.sharing]++;
+                    }
+                });
+            });
+
+            document.getElementById('statReceived').innerText = `₹${stats.collected.toLocaleString('en-IN')}`;
+            document.getElementById('statPending').innerText = `₹${stats.pending.toLocaleString('en-IN')}`;
+            document.getElementById('statTotalDues').innerText = stats.totalDues;
+            document.getElementById('statVacThis').innerText = stats.vacThis;
+            document.getElementById('statVacNext').innerText = stats.vacNext;
+
+            let vacHtml = '';
+            for(let s in vacancies) {
+                if(vacancies[s] > 0 || (s >= 1 && s <= 4)) {
+                    vacHtml += `<div class="flex justify-between"><span>${s}-Share:</span> <span class="text-rose-600">${vacancies[s]} vacant</span></div>`;
+                }
+            }
+            document.getElementById('vacancyBreakdown').innerHTML = vacHtml;
+        }
+
+        // --- VIEWS ---
+        function changeView(m) { viewMode = m; renderMain(); }
+
+        function renderMain() {
+            const container = document.getElementById('mainDisplay');
+            const tabs = document.getElementById('floorTabControls');
+            container.innerHTML = ''; tabs.innerHTML = '';
+
+            document.getElementById('btnTabbed').className = `px-4 py-2 rounded-lg text-xs font-bold transition ${viewMode === 'tabbed' ? 'bg-rose-900 text-white shadow-md' : 'text-slate-500'}`;
+            document.getElementById('btnList').className = `px-4 py-2 rounded-lg text-xs font-bold transition ${viewMode === 'list' ? 'bg-rose-900 text-white shadow-md' : 'text-slate-500'}`;
+
+            if (viewMode === 'tabbed') {
+                // Ensure tabs are generated up to the highest floor available
+                let maxFloor = Math.max(...hostel.map(r => r.floor));
+                for (let i = 1; i <= maxFloor; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `px-6 py-2 rounded-xl text-xs font-bold shadow-sm transition shrink-0 ${currentFloor === i ? 'bg-rose-900 text-white' : 'bg-white text-slate-500 border'}`;
+                    btn.innerText = `Floor ${i}`;
+                    btn.onclick = () => { currentFloor = i; renderMain(); };
+                    tabs.appendChild(btn);
+                }
+                renderFloor(currentFloor, container);
+            } else {
+                let maxFloor = Math.max(...hostel.map(r => r.floor));
+                for (let i = 1; i <= maxFloor; i++) {
+                    const h = document.createElement('h2');
+                    h.className = "text-lg font-black text-rose-900 border-b-2 border-rose-100 pb-2 mb-4 mt-8 uppercase tracking-widest";
+                    h.innerText = `Floor ${i}`;
+                    container.appendChild(h);
+                    renderFloor(i, container);
+                }
+            }
+        }
+
+        function renderFloor(f, container) {
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6";
+            hostel.filter(r => r.floor === f).forEach(room => {
+                if (activeFilter === 'due' && !room.beds.some((b, idx) => b !== null && !room.paidBeds.includes(idx))) return;
+
+                const card = document.createElement('div');
+                card.id = `room-${room.id}`;
+                card.className = "bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl transition-all";
+                
+                let beds = '';
+                room.beds.forEach((bed, idx) => {
+                    const occ = bed !== null;
+                    const paid = room.paidBeds.includes(idx);
+                    beds += `
+                        <div onclick="openBedModal(${room.id}, ${idx})" class="flex flex-col items-center cursor-pointer group">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white transition transform group-hover:scale-110 ${occ ? 'bed-occupied shadow-md' : 'bed-vacant opacity-20'}">
+                                <i class="fa-solid fa-bed text-xs"></i>
+                            </div>
+                            <span class="text-[8px] mt-1 font-black text-center ${occ ? (paid ? 'status-paid' : 'status-due') : 'text-slate-300'}">
+                                ${occ ? (paid ? 'PAID' : 'DUE') : 'OPEN'}
+                            </span>
+                        </div>`;
+                });
+
+                card.innerHTML = `<div class="flex justify-between items-center mb-4"><h4 class="font-black text-slate-700">Room ${room.id} <span class="text-xs text-slate-400 font-normal ml-1">(${room.sharing}-Share)</span></h4><button onclick="openRoomConfig(${room.id})" class="text-slate-200 hover:text-rose-500"><i class="fa-solid fa-gear"></i></button></div><div class="grid grid-cols-4 gap-2">${beds}</div>`;
+                grid.appendChild(card);
+            });
+            container.appendChild(grid);
+        }
+
+        // --- LOGIC FUNCTIONS ---
+        function openBedModal(roomId, bedIdx) {
+            const room = hostel.find(r => r.id === roomId);
+            const bed = room.beds[bedIdx];
+            document.getElementById('activeRoomId').value = roomId;
+            document.getElementById('activeBedIdx').value = bedIdx;
+            document.getElementById('modalTitle').innerText = `Room ${roomId} | Bed ${bedIdx + 1}`;
+            
+            if (bed) {
+                document.getElementById('resName').value = bed.name || '';
+                document.getElementById('resMobile').value = bed.mobile || '';
+                document.getElementById('joinDate').value = bed.joinDate || '';
+                document.getElementById('monthlyFee').value = bed.fee || '';
+                document.getElementById('vacateDate').value = bed.vacateDate || '';
+                
+                const isPaid = room.paidBeds.includes(bedIdx);
+                document.getElementById('btnPaid').classList.toggle('hidden', isPaid);
+                document.getElementById('btnUnpaid').classList.toggle('hidden', !isPaid);
+                document.getElementById('waButton').classList.remove('hidden');
+                document.getElementById('waButton').onclick = () => window.open(`https://wa.me/91${bed.mobile}?text=Namaste ${bed.name}, reminder from Aurora Elite PG regarding your monthly fee.`, '_blank');
+                updateProrate();
+            } else {
+                document.getElementById('bedForm').reset();
+                document.getElementById('prorateDisplay').innerHTML = 'Fee logic will appear here...';
+                document.getElementById('btnPaid').classList.add('hidden');
+                document.getElementById('btnUnpaid').classList.add('hidden');
+                document.getElementById('waButton').classList.add('hidden');
+            }
+            document.getElementById('bedModal').classList.remove('hidden');
+        }
+
+        function togglePayment(paid) {
+            const rId = parseInt(document.getElementById('activeRoomId').value);
+            const bIdx = parseInt(document.getElementById('activeBedIdx').value);
+            const room = hostel.find(r => r.id === rId);
+            if (paid) { if (!room.paidBeds.includes(bIdx)) room.paidBeds.push(bIdx); }
+            else { room.paidBeds = room.paidBeds.filter(i => i !== bIdx); }
+            save(); closeModal();
+        }
+
+        function processVacate() {
+            if(confirm("Confirm removal of resident and set bed to Vacant?")) {
+                const rId = parseInt(document.getElementById('activeRoomId').value);
+                const bIdx = parseInt(document.getElementById('activeBedIdx').value);
+                const room = hostel.find(r => r.id === rId);
+                room.beds[bIdx] = null;
+                room.paidBeds = room.paidBeds.filter(i => i !== bIdx);
+                save(); closeModal();
+            }
+        }
+
+        // --- EXPORT & IMPORT ---
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Aurora Elite PG - Resident List", 14, 15);
+            const data = [];
+            hostel.forEach(r => r.beds.forEach((b, i) => { if(b) data.push([r.id, b.name, b.mobile, b.joinDate, b.fee, r.paidBeds.includes(i)?'Paid':'Due']); }));
+            doc.autoTable({ head: [['Room', 'Name', 'Mobile', 'Joining', 'Fee', 'Status']], body: data, startY: 20, headStyles: {fillColor:[159, 18, 57]} });
+            doc.save("Aurora_Elite_Residents.pdf");
+        }
+
+        function downloadExcel() {
+            // Updated Headers: Added 'Sharing Capacity' and removed 'Aadhar'
+            const data = [["Room", "Sharing Capacity", "Resident Name", "Mobile", "Joining Date", "Monthly Fee", "Vacate Date", "Payment Status"]];
+            
+            hostel.forEach(r => {
+                r.beds.forEach((b, i) => {
+                    if(b) {
+                        data.push([r.id, r.sharing, b.name, b.mobile, b.joinDate, b.fee, b.vacateDate || "", r.paidBeds.includes(i) ? 'Paid' : 'Due']);
+                    } else {
+                        // Export empty rows for vacant beds to map 1:1 on re-import
+                        data.push([r.id, r.sharing, "", "", "", "", "", ""]);
+                    }
+                });
+            });
+            
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Database");
+            XLSX.writeFile(wb, "Aurora_Elite_Database.xlsx");
+        }
+
+        function triggerImport() {
+            document.getElementById('fileImport').click();
+        }
+
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Parse Data. Use raw: false to read string formats (dates) properly
+                    const json = XLSX.utils.sheet_to_json(worksheet, {defval: "", raw: false});
+                    
+                    let importedHostelMap = {};
+                    
+                    json.forEach(row => {
+                        const roomId = parseInt(row["Room"]);
+                        if (!roomId || isNaN(roomId)) return;
+                        
+                        if (!importedHostelMap[roomId]) {
+                            importedHostelMap[roomId] = {
+                                sharing: parseInt(row["Sharing Capacity"]) || 0,
+                                beds: [],
+                                paidBeds: []
+                            };
+                        }
+
+                        const currentRoomData = importedHostelMap[roomId];
+                        let bedObj = null;
+                        
+                        // Check if resident exists in this row
+                        if (row["Resident Name"] && String(row["Resident Name"]).trim() !== "") {
+                            bedObj = {
+                                name: String(row["Resident Name"]).trim(),
+                                mobile: String(row["Mobile"]).trim(),
+                                joinDate: row["Joining Date"] ? String(row["Joining Date"]).trim() : "",
+                                fee: row["Monthly Fee"] ? parseFloat(row["Monthly Fee"]) : 0,
+                                vacateDate: row["Vacate Date"] ? String(row["Vacate Date"]).trim() : ""
+                            };
+                        }
+                        
+                        const bedIndex = currentRoomData.beds.length;
+                        currentRoomData.beds.push(bedObj);
+                        
+                        if (String(row["Payment Status"]).toLowerCase().trim() === 'paid') {
+                            currentRoomData.paidBeds.push(bedIndex);
+                        }
+                    });
+
+                    // Merge into existing local storage state
+                    hostel.forEach(room => {
+                        if (importedHostelMap[room.id]) {
+                            const impRoom = importedHostelMap[room.id];
+                            
+                            // Adjust Sharing Capacity: It should be the max of the explicitly stated capacity OR the number of bed rows provided in Excel
+                            room.sharing = Math.max(impRoom.sharing, impRoom.beds.length, 1);
+                            
+                            // Hydrate the beds array
+                            let newBeds = [...impRoom.beds];
+                            while (newBeds.length < room.sharing) {
+                                newBeds.push(null);
+                            }
+                            
+                            room.beds = newBeds.slice(0, room.sharing); // ensure no overrun
+                            room.paidBeds = [...impRoom.paidBeds].filter(idx => idx < room.sharing);
+                        }
+                    });
+
+                    save();
+                    alert("Import successful! The floor plan and resident details have been updated.");
+                } catch (error) {
+                    alert("Error parsing Excel file. Ensure it matches the export format.");
+                    console.error(error);
+                }
+                
+                // Reset input
+                event.target.value = "";
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- UTILS ---
+        function updateProrate() {
+            const dateInput = document.getElementById('joinDate').value;
+            const fee = document.getElementById('monthlyFee').value;
+            if(!dateInput || !fee) return;
+            const d = new Date(dateInput);
+            const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const rem = days - d.getDate() + 1;
+            const pro = Math.round((fee / days) * rem);
+            document.getElementById('prorateDisplay').innerHTML = d.getDate() === 1 ? `Full month fee: <b>₹${fee}</b>` : `Mid-month join. Fee for ${rem} days: <b>₹${pro}</b>`;
+        }
+
+        function handleSearch() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            if(!q) return;
+            hostel.forEach(room => {
+                let m = room.id.toString().includes(q);
+                room.beds.forEach(b => { if(b && (b.name.toLowerCase().includes(q) || b.mobile.includes(q))) m = true; });
+                if(m) {
+                    if(viewMode === 'tabbed') { currentFloor = room.floor; renderMain(); }
+                    setTimeout(() => {
+                        const el = document.getElementById(`room-${room.id}`);
+                        if(el) {
+                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            el.style.boxShadow = "0 0 20px #be123e";
+                            setTimeout(() => el.style.boxShadow = "none", 3000);
+                        }
+                    }, 200);
+                }
+            });
+        }
+
+        function applyFilter(f) { activeFilter = f; renderMain(); }
+        function closeModal() { document.getElementById('bedModal').classList.add('hidden'); }
+        
+        function openRoomConfig(id) {
+            const r = hostel.find(r => r.id === id);
+            document.getElementById('configRoomNo').innerText = id;
+            
+            // Add option dynamically if a larger sharing is imported than exists in the select dropdown
+            const selectEl = document.getElementById('newSharing');
+            let optionExists = Array.from(selectEl.options).some(opt => parseInt(opt.value) === r.sharing);
+            if(!optionExists) {
+                const newOpt = document.createElement('option');
+                newOpt.value = r.sharing;
+                newOpt.text = `${r.sharing} Share`;
+                selectEl.appendChild(newOpt);
+            }
+            selectEl.value = r.sharing;
+            document.getElementById('roomModal').classList.remove('hidden');
+        }
+        
+        function closeRoomModal() { document.getElementById('roomModal').classList.add('hidden'); }
+        
+        function saveRoomConfig() {
+            const id = parseInt(document.getElementById('configRoomNo').innerText);
+            const n = parseInt(document.getElementById('newSharing').value);
+            const r = hostel.find(r => r.id === id);
+            
+            // Update bed array lengths based on new capacity
+            while(r.beds.length < n) r.beds.push(null);
+            if(r.beds.length > n) {
+                 // Prevent shrinking if beds are occupied
+                 const occupiedCount = r.beds.filter(b => b !== null).length;
+                 if(n < occupiedCount) {
+                     alert(`Cannot reduce capacity to ${n}. There are already ${occupiedCount} residents in this room.`);
+                     return;
+                 }
+                 r.beds = r.beds.slice(0, n);
+                 r.paidBeds = r.paidBeds.filter(idx => idx < n);
+            }
+            
+            r.sharing = n; 
+            save(); 
+            closeRoomModal();
+        }
+
+        document.getElementById('bedForm').onsubmit = (e) => {
+            e.preventDefault();
+            const rId = parseInt(document.getElementById('activeRoomId').value);
+            const bIdx = parseInt(document.getElementById('activeBedIdx').value);
+            const r = hostel.find(r => r.id === rId);
+            r.beds[bIdx] = {
+                name: document.getElementById('resName').value,
+                mobile: document.getElementById('resMobile').value,
+                joinDate: document.getElementById('joinDate').value,
+                fee: document.getElementById('monthlyFee').value,
+                vacateDate: document.getElementById('vacateDate').value
+            };
+            save(); closeModal();
+        };
+
+        // Init
+        save();
+load from firebase();
     </script>
-  </body>
+</body>
 </html>
