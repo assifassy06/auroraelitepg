@@ -197,43 +197,39 @@
         let currentFloor = 1;
         let activeFilter = 'all';
         let viewMode = 'tabbed';
-	
-	// --- FIREBASE SYNC ---
+
+        // --- FIREBASE SYNC ---
         function loadFromFirebase() {
             hostelRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                     hostel = data;
                 } else {
-
-        hostel = [];
-	if (hostel.length === 0) {
-            for (let f = 1; f <= 6; f++) {
-                for (let r = 1; r <= 8; r++) {
-                    hostel.push({ id: (f * 100) + r, floor: f, sharing: 3, beds: Array(3).fill(null), paidBeds: [] });
+                    hostel = [];
+                    for (let f = 1; f <= 6; f++) {
+                        for (let r = 1; r <= 8; r++) {
+                            hostel.push({ id: (f * 100) + r, floor: f, sharing: 3, beds: Array(3).fill(null), paidBeds: [] });
+                        }
+                    }
+                    for (let r = 1; r <= 5; r++) {
+                        hostel.push({ id: 700 + r, floor: 7, sharing: 4, beds: Array(4).fill(null), paidBeds: [] });
+                    }
+                    save(); 
                 }
-            }
-            for (let r = 1; r <= 5; r++) {
-                hostel.push({ id: 700 + r, floor: 7, sharing: 4, beds: Array(4).fill(null), paidBeds: [] });
-            }
-            save();
-        }
                 updateDashboard();
                 renderMain();
             });
         }
+
         function save() {
             localStorage.setItem('aurora_elite_v3', JSON.stringify(hostel));
-  hostelRef.set(hostel);
-            updateDashboard();
-            renderMain();
+            hostelRef.set(hostel);
         }
 
         // --- ANALYTICS ---
         function updateDashboard() {
             let stats = { collected: 0, pending: 0, totalDues: 0, vacThis: 0, vacNext: 0 };
             let vacancies = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0 };
-            
             const now = new Date();
             const thisM = now.getMonth();
             const nextM = (thisM + 1) % 12;
@@ -272,18 +268,21 @@
         }
 
         // --- VIEWS ---
-        function changeView(m) { viewMode = m; renderMain(); }
+        function changeView(m) { 
+            viewMode = m;
+            renderMain(); 
+        }
 
         function renderMain() {
             const container = document.getElementById('mainDisplay');
             const tabs = document.getElementById('floorTabControls');
-            container.innerHTML = ''; tabs.innerHTML = '';
+            container.innerHTML = ''; 
+            tabs.innerHTML = '';
 
             document.getElementById('btnTabbed').className = `px-4 py-2 rounded-lg text-xs font-bold transition ${viewMode === 'tabbed' ? 'bg-rose-900 text-white shadow-md' : 'text-slate-500'}`;
             document.getElementById('btnList').className = `px-4 py-2 rounded-lg text-xs font-bold transition ${viewMode === 'list' ? 'bg-rose-900 text-white shadow-md' : 'text-slate-500'}`;
 
             if (viewMode === 'tabbed') {
-                // Ensure tabs are generated up to the highest floor available
                 let maxFloor = Math.max(...hostel.map(r => r.floor));
                 for (let i = 1; i <= maxFloor; i++) {
                     const btn = document.createElement('button');
@@ -371,9 +370,13 @@
             const rId = parseInt(document.getElementById('activeRoomId').value);
             const bIdx = parseInt(document.getElementById('activeBedIdx').value);
             const room = hostel.find(r => r.id === rId);
-            if (paid) { if (!room.paidBeds.includes(bIdx)) room.paidBeds.push(bIdx); }
-            else { room.paidBeds = room.paidBeds.filter(i => i !== bIdx); }
-            save(); closeModal();
+            if (paid) { 
+                if (!room.paidBeds.includes(bIdx)) room.paidBeds.push(bIdx);
+            } else { 
+                room.paidBeds = room.paidBeds.filter(i => i !== bIdx);
+            }
+            save(); 
+            closeModal();
         }
 
         function processVacate() {
@@ -383,7 +386,8 @@
                 const room = hostel.find(r => r.id === rId);
                 room.beds[bIdx] = null;
                 room.paidBeds = room.paidBeds.filter(i => i !== bIdx);
-                save(); closeModal();
+                save(); 
+                closeModal();
             }
         }
 
@@ -393,40 +397,35 @@
             const doc = new jsPDF();
             doc.text("Aurora Elite PG - Resident List", 14, 15);
             const data = [];
-            hostel.forEach(r => r.beds.forEach((b, i) => { if(b) data.push([r.id, b.name, b.mobile, b.joinDate, b.fee, r.paidBeds.includes(i)?'Paid':'Due']); }));
+            hostel.forEach(r => r.beds.forEach((b, i) => { 
+                if(b) data.push([r.id, b.name, b.mobile, b.joinDate, b.fee, r.paidBeds.includes(i)?'Paid':'Due']); 
+            }));
             doc.autoTable({ head: [['Room', 'Name', 'Mobile', 'Joining', 'Fee', 'Status']], body: data, startY: 20, headStyles: {fillColor:[159, 18, 57]} });
             doc.save("Aurora_Elite_Residents.pdf");
         }
 
         function downloadExcel() {
-            // Updated Headers: Added 'Sharing Capacity' and removed 'Aadhar'
             const data = [["Room", "Sharing Capacity", "Resident Name", "Mobile", "Joining Date", "Monthly Fee", "Vacate Date", "Payment Status"]];
-            
             hostel.forEach(r => {
                 r.beds.forEach((b, i) => {
                     if(b) {
                         data.push([r.id, r.sharing, b.name, b.mobile, b.joinDate, b.fee, b.vacateDate || "", r.paidBeds.includes(i) ? 'Paid' : 'Due']);
                     } else {
-                        // Export empty rows for vacant beds to map 1:1 on re-import
                         data.push([r.id, r.sharing, "", "", "", "", "", ""]);
                     }
                 });
             });
-            
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Database");
             XLSX.writeFile(wb, "Aurora_Elite_Database.xlsx");
         }
 
-        function triggerImport() {
-            document.getElementById('fileImport').click();
-        }
+        function triggerImport() { document.getElementById('fileImport').click(); }
 
         function handleImport(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
@@ -434,73 +433,49 @@
                     const workbook = XLSX.read(data, {type: 'array'});
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // Parse Data. Use raw: false to read string formats (dates) properly
                     const json = XLSX.utils.sheet_to_json(worksheet, {defval: "", raw: false});
-                    
                     let importedHostelMap = {};
                     
                     json.forEach(row => {
                         const roomId = parseInt(row["Room"]);
                         if (!roomId || isNaN(roomId)) return;
-                        
                         if (!importedHostelMap[roomId]) {
-                            importedHostelMap[roomId] = {
-                                sharing: parseInt(row["Sharing Capacity"]) || 0,
-                                beds: [],
-                                paidBeds: []
-                            };
+                            importedHostelMap[roomId] = { sharing: parseInt(row["Sharing Capacity"]) || 0, beds: [], paidBeds: [] };
                         }
-
                         const currentRoomData = importedHostelMap[roomId];
                         let bedObj = null;
-                        
-                        // Check if resident exists in this row
                         if (row["Resident Name"] && String(row["Resident Name"]).trim() !== "") {
                             bedObj = {
                                 name: String(row["Resident Name"]).trim(),
                                 mobile: String(row["Mobile"]).trim(),
-                                joinDate: row["Joining Date"] ? String(row["Joining Date"]).trim() : "",
-                                fee: row["Monthly Fee"] ? parseFloat(row["Monthly Fee"]) : 0,
-                                vacateDate: row["Vacate Date"] ? String(row["Vacate Date"]).trim() : ""
+                                joinDate: String(row["Joining Date"] || "").trim(),
+                                fee: parseFloat(row["Monthly Fee"] || 0),
+                                vacateDate: String(row["Vacate Date"] || "").trim()
                             };
                         }
-                        
                         const bedIndex = currentRoomData.beds.length;
                         currentRoomData.beds.push(bedObj);
-                        
                         if (String(row["Payment Status"]).toLowerCase().trim() === 'paid') {
                             currentRoomData.paidBeds.push(bedIndex);
                         }
                     });
 
-                    // Merge into existing local storage state
                     hostel.forEach(room => {
                         if (importedHostelMap[room.id]) {
                             const impRoom = importedHostelMap[room.id];
-                            
-                            // Adjust Sharing Capacity: It should be the max of the explicitly stated capacity OR the number of bed rows provided in Excel
                             room.sharing = Math.max(impRoom.sharing, impRoom.beds.length, 1);
-                            
-                            // Hydrate the beds array
                             let newBeds = [...impRoom.beds];
-                            while (newBeds.length < room.sharing) {
-                                newBeds.push(null);
-                            }
-                            
-                            room.beds = newBeds.slice(0, room.sharing); // ensure no overrun
+                            while (newBeds.length < room.sharing) newBeds.push(null);
+                            room.beds = newBeds.slice(0, room.sharing);
                             room.paidBeds = [...impRoom.paidBeds].filter(idx => idx < room.sharing);
                         }
                     });
-
                     save();
-                    alert("Import successful! The floor plan and resident details have been updated.");
+                    alert("Import successful!");
                 } catch (error) {
-                    alert("Error parsing Excel file. Ensure it matches the export format.");
+                    alert("Error parsing Excel file.");
                     console.error(error);
                 }
-                
-                // Reset input
                 event.target.value = "";
             };
             reader.readAsArrayBuffer(file);
@@ -515,7 +490,8 @@
             const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
             const rem = days - d.getDate() + 1;
             const pro = Math.round((fee / days) * rem);
-            document.getElementById('prorateDisplay').innerHTML = d.getDate() === 1 ? `Full month fee: <b>₹${fee}</b>` : `Mid-month join. Fee for ${rem} days: <b>₹${pro}</b>`;
+            document.getElementById('prorateDisplay').innerHTML = d.getDate() === 1 ?
+                `Full month fee: <b>₹${fee}</b>` : `Mid-month join. Fee for ${rem} days: <b>₹${pro}</b>`;
         }
 
         function handleSearch() {
@@ -544,8 +520,6 @@
         function openRoomConfig(id) {
             const r = hostel.find(r => r.id === id);
             document.getElementById('configRoomNo').innerText = id;
-            
-            // Add option dynamically if a larger sharing is imported than exists in the select dropdown
             const selectEl = document.getElementById('newSharing');
             let optionExists = Array.from(selectEl.options).some(opt => parseInt(opt.value) === r.sharing);
             if(!optionExists) {
@@ -564,21 +538,17 @@
             const id = parseInt(document.getElementById('configRoomNo').innerText);
             const n = parseInt(document.getElementById('newSharing').value);
             const r = hostel.find(r => r.id === id);
-            
-            // Update bed array lengths based on new capacity
             while(r.beds.length < n) r.beds.push(null);
             if(r.beds.length > n) {
-                 // Prevent shrinking if beds are occupied
                  const occupiedCount = r.beds.filter(b => b !== null).length;
                  if(n < occupiedCount) {
-                     alert(`Cannot reduce capacity to ${n}. There are already ${occupiedCount} residents in this room.`);
+                     alert(`Cannot reduce capacity to ${n}. Resident occupied.`);
                      return;
                  }
                  r.beds = r.beds.slice(0, n);
                  r.paidBeds = r.paidBeds.filter(idx => idx < n);
             }
-            
-            r.sharing = n; 
+            r.sharing = n;
             save(); 
             closeRoomModal();
         }
@@ -595,11 +565,10 @@
                 fee: document.getElementById('monthlyFee').value,
                 vacateDate: document.getElementById('vacateDate').value
             };
-            save(); closeModal();
+            save(); 
+            closeModal();
         };
 
-        // Init
-loadfromfirebase();
+        // --- INITIALIZATION ---
+        loadFromFirebase(); 
     </script>
-</body>
-</html>
